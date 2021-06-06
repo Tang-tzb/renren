@@ -3,12 +3,110 @@
 
 <mapper namespace="${package}.${moduleName}.dao.${className}Dao">
 
-	<!-- 可根据自己的需求，是否要使用 -->
+    <!-- 可根据自己的需求，是否要使用 -->
     <resultMap type="${package}.${moduleName}.entity.${className}Entity" id="${classname}Map">
-#foreach($column in $columns)
+ #foreach($column in $columns)
         <result property="${column.attrname}" column="${column.columnName}"/>
 #end
     </resultMap>
 
+    <sql id="allColumns">
+#foreach($column in $columns)
+#if($column.columnName == $pk.columnName)
+        ${column.columnName}
+#end
+        ,${column.columnName}
+#end
+    </sql>
 
+    <sql id="valueColumns">
+        #foreach($column in $columns)
+                #if($column.columnName == $pk.columnName)
+        #{${column.attrname}}
+                #end
+        ,#{${column.attrname}}
+        #end
+    </sql>
+
+    <select id="getById" resultMap="${classname}Map">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ${tableName}
+        WHERE
+        ${pk.columnName} = #{${pk.attrname}}
+        LIMIT 1
+    </select>
+
+    <select id="getByIdList" resultType="${classname}Map">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ${tableName}
+        WHERE
+        ${pk.columnName} in
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" parameterType="${package}.${moduleName}.dto.${className}DTO"
+            keyProperty="id" keyColumn="id" useGeneratedKeys="true">
+        INSERT INTO ${tableName}
+        (
+        <trim prefixOverrides="" suffixOverrides=",">
+            #foreach($column in $columns)
+          <if test="${column.attrname} != null">${column.columnName},</if>
+            #end
+        </trim>
+        )
+        VALUES (
+        <trim prefixOverrides="" suffixOverrides=",">
+            #foreach($column in $columns)
+           <if test="${column.attrname} != null">#{${column.attrname}},</if>
+            #end
+        </trim>
+        )
+    </insert>
+
+    <!-- 批量新增或更新 -->
+    <insert id="batchInsertOrUpdate" keyProperty="id" keyColumn="id" useGeneratedKeys="true">
+        <foreach collection="list" item="item" separator=";">
+            INSERT INTO ${tableName}
+            (
+            <trim prefixOverrides="" suffixOverrides=",">
+                #foreach($column in $columns)
+               <if test="item.${column.attrname} != null">${column.columnName},</if>
+                #end
+            </trim>
+            )
+            VALUES
+            (
+            <trim prefixOverrides="" suffixOverrides=",">
+                #foreach($column in $columns)
+               <if test="item.${column.attrname} != null">#{${column.attrname}},</if>
+                #end
+            </trim>
+            )ON DUPLICATE KEY UPDATE
+            <trim prefixOverrides="" suffixOverrides=",">
+                #foreach($column in $columns)
+                <if test="item.${column.attrname} != null">
+                   ${column.attrname} = #{${column.attrname}},
+                </if>
+                #end
+            </trim>
+        </foreach>
+    </insert>
+
+    <!-- 修改裂变营销配置 -->
+    <update id="update">
+        UPDATE ${tableName}
+        <set>
+#foreach($column in $columns)
+            <if test="${column.attrname} != null">
+                ${column.columnName} = #{${column.attrname}},
+            </if>
+#end
+        </set>
+        WHERE ${pk.columnName} = #{${pk.attrname}}
+    </update>
 </mapper>
